@@ -77,7 +77,10 @@ bind_port = 8080
 # eventlet_debug = false
 
 [pipeline:main]
-pipeline = catch_errors gatekeeper healthcheck proxy-logging cache container_sync bulk tempurl ratelimit tempauth container-quotas account-quotas slo dlo versioned_writes proxy-logging proxy-server
+pipeline = catch_errors gatekeeper healthcheck proxy-logging cache container_sync bulk tempurl ratelimit tempauth container-quotas account-quotas slo dlo versioned_writes proxy-logging overencryption proxy-server
+
+[filter:overencryption]
+paste.filter_factory = swift.common.middleware.sel_encryption:filter_factory
 
 [app:proxy-server]
 use = egg:swift#proxy
