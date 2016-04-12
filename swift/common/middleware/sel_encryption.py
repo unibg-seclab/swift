@@ -26,7 +26,6 @@ class SEL_Encryption():
         if obj and req.method == 'PUT':
             container_info = get_container_info(req.environ, self.app)
             req.headers[SYSMETA_OBJ_OE] = container_info['sysmeta'].get(META_OE, '0')
-            req.headers[META_OE] = container_info['sysmeta'].get(META_OE, '0')
             print req.headers
 
         # pass request to next wsgi middleware and get response
