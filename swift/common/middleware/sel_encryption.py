@@ -45,6 +45,7 @@ class SEL_Encryption():
         if req.method == 'GET' and obj is not None:
             cont_version = container_info['sysmeta'].get(META_OE, '')
             obj_version = resp.headers.get(SYSMETA_OBJ_OE, '')
+            resp.headers['X-' + META_OE] = resp.headers.get(SYSMETA_OBJ_OE, '')
             if cont_version != obj_version:
                 sel_key = self.cs.generate_token()
                 resp.body = self.cs.encrypt_object(resp.body, sel_key)
