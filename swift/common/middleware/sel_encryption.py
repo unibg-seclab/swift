@@ -2,6 +2,10 @@ from swift.common.swob import wsgify
 from swift.common.middleware.crypto_service import CryptoService
 from swift.proxy.controllers.base import get_container_info
 
+META_OE = 'oe-version'
+SYSMETA_OBJ_OE = get_sys_meta_prefix('object') + META_OE
+SYSMETA_CONTAINER_OE = get_sys_meta_prefix('container') + META_OE
+
 
 class SEL_Encryption():
 
@@ -13,11 +17,26 @@ class SEL_Encryption():
     @wsgify
     def __call__(self, req):
         version, account, container, obj = req.split_path(1, 4, True)
+
+        # PUT container
+        if container and not obj and req.method == 'PUT':
+            req.headers[SYSMETA_CONTAINER_OE] = '0'
+
+        # PUT object
+        if obj and req.method == 'PUT':
+            container_info = get_container_info(req.environ, self.app)
+            req.headers[SYSMETA_OBJ_OE] = container_info['sysmeta'].get(META_OE, '0')
+            req.headers[META_OE] = container_info['sysmeta'].get(META_OE, '0')
+            print req.headers
+
+        # pass request to next wsgi middleware and get response
         resp = req.get_response(self.app)
+
         if container is not None:
             container_info = get_container_info(req.environ, self.app)
             cont_version = container_info['meta'].get('version')
-        # Overencryption
+
+        # GET object (overencryption)
         if req.method == 'GET' and obj is not None:
             obj_version = resp.headers.get('x-object-meta-version')
             if cont_version != obj_version:
