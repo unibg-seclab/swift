@@ -1,5 +1,6 @@
 from swift.common.swob import wsgify
 from swift.common.middleware.crypto_service import CryptoService
+from swift.proxy.controllers.base import get_container_info
 
 
 class SEL_Encryption():
@@ -13,10 +14,16 @@ class SEL_Encryption():
     def __call__(self, req):
         version, account, container, obj = req.split_path(1, 4, True)
         resp = req.get_response(self.app)
+        container_info = get_container_info(req.environ, self.app)
+        cont_version = container_info['meta'].get('version')
+        # Overencryption
         if req.method == 'GET' and obj is not None:
-            sel_key = self.cs.generate_token()
-            resp.body = self.cs.encrypt_object(resp.body, sel_key)
-            resp.headers['X-SEL-Key'] = sel_key
+            obj_version = resp.headers.get('x-object-meta-version')
+            if cont_version != obj_version:
+                sel_key = self.cs.generate_token()
+                resp.body = self.cs.encrypt_object(resp.body, sel_key)
+                resp.headers['X-SEL-Key'] = sel_key
+
         return resp
 
 
