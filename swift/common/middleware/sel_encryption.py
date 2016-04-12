@@ -18,25 +18,31 @@ class SEL_Encryption():
     def __call__(self, req):
         version, account, container, obj = req.split_path(1, 4, True)
 
+        if container is not None:
+            container_info = get_container_info(req.environ, self.app)
+
         # PUT container
         if container and not obj and req.method == 'PUT':
             req.headers[SYSMETA_CONTAINER_OE] = '0'
 
         # PUT object
         if obj and req.method == 'PUT':
-            container_info = get_container_info(req.environ, self.app)
             req.headers[SYSMETA_OBJ_OE] = container_info['sysmeta'].get(META_OE, '0')
-            print req.headers
 
         # pass request to next wsgi middleware and get response
         resp = req.get_response(self.app)
 
-        if container is not None:
-            container_info = get_container_info(req.environ, self.app)
-            cont_version = container_info['meta'].get('version')
+        # HEAD/GET container
+        if container and not obj and req.method in ('HEAD', 'GET'):
+            resp.headers['X-' + META_OE] = resp.headers.get(SYSMETA_CONTAINER_OE, '')
 
-        # GET object (overencryption)
+        # HEAD object
+        if obj and req.method == 'HEAD':
+            resp.headers['X-' + META_OE] = resp.headers.get(SYSMETA_OBJ_OE, '')
+
+        # GET object (OverEncryption)
         if req.method == 'GET' and obj is not None:
+            cont_version = container_info['meta'].get('version')
             obj_version = resp.headers.get('x-object-meta-version')
             if cont_version != obj_version:
                 sel_key = self.cs.generate_token()
