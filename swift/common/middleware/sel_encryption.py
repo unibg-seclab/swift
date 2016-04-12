@@ -1,5 +1,5 @@
 from swift.common.swob import wsgify
-from swift.common.middleware.crypto_service import CryptoService
+from swift.common.crypto_utils import CryptoService
 from swift.proxy.controllers.base import get_container_info
 from swift.common.request_helpers import get_sys_meta_prefix
 
