@@ -14,8 +14,9 @@ class SEL_Encryption():
     def __call__(self, req):
         version, account, container, obj = req.split_path(1, 4, True)
         resp = req.get_response(self.app)
-        container_info = get_container_info(req.environ, self.app)
-        cont_version = container_info['meta'].get('version')
+        if container is not None:
+            container_info = get_container_info(req.environ, self.app)
+            cont_version = container_info['meta'].get('version')
         # Overencryption
         if req.method == 'GET' and obj is not None:
             obj_version = resp.headers.get('x-object-meta-version')
