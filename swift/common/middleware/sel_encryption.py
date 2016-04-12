@@ -1,7 +1,7 @@
 from swift.common.swob import wsgify
 from swift.common.middleware.crypto_service import CryptoService
 from swift.proxy.controllers.base import get_container_info
-from swift.common.request_helper import get_sys_meta_prefix
+from swift.common.request_helpers import get_sys_meta_prefix
 
 META_OE = 'oe-version'
 SYSMETA_OBJ_OE = get_sys_meta_prefix('object') + META_OE
