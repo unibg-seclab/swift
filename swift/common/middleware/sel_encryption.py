@@ -42,8 +42,8 @@ class SEL_Encryption():
 
         # GET object (OverEncryption)
         if req.method == 'GET' and obj is not None:
-            cont_version = container_info['meta'].get('version')
-            obj_version = resp.headers.get('x-object-meta-version')
+            cont_version = container_info['sysmeta'].get(META_OE, '')
+            obj_version = resp.headers.get(SYSMETA_OBJ_OE, '')
             if cont_version != obj_version:
                 sel_key = self.cs.generate_token()
                 resp.body = self.cs.encrypt_object(resp.body, sel_key)
