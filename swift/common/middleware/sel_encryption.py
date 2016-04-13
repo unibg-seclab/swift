@@ -1,5 +1,5 @@
 from swift.common.swob import wsgify
-from swift.common.overencryption_utils import generate_random_key, encrypt_object
+from swift.common.overencryption_utils import generate_random_key, encrypt_object, revoking_users
 from swift.proxy.controllers.base import get_container_info
 from swift.common.request_helpers import get_sys_meta_prefix
 
@@ -24,6 +24,13 @@ class SEL_Encryption():
         # PUT container
         if container and not obj and req.method == 'PUT':
             req.headers[SYS_CONT] = '0'
+
+        # POST container
+        if container and not obj and req.method == 'POST':
+            cont_version = container_info['sysmeta'].get(META_OE, '')
+            revoked_users = revoking_users(container_info, req.headers)
+            if cont_version.isdigit() and revoked_users:
+                req.headers[SYS_CONT] = int(cont_version) + 1
 
         # PUT object
         if obj and req.method == 'PUT':
