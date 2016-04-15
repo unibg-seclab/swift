@@ -1,4 +1,6 @@
+from cStringIO import StringIO
 from swift.common.swob import wsgify
+from swift.common.http import is_success
 from swift.common.overencryption_utils import generate_random_key, encrypt_object, revoking_users
 from swift.proxy.controllers.base import get_container_info
 from swift.common.request_helpers import get_sys_meta_prefix
@@ -48,7 +50,7 @@ class SEL_Encryption():
             resp.headers['X-' + META_OE] = resp.headers.get(SYS_OBJ, '')
 
         # GET object (OverEncryption)
-        if req.method == 'GET' and obj is not None:
+        if req.method == 'GET' and obj:
             cont_version = container_info['sysmeta'].get(META_OE, '')
             obj_version = resp.headers.get(SYS_OBJ, '')
             resp.headers['X-' + META_OE] = resp.headers.get(SYS_OBJ, '')
@@ -56,6 +58,27 @@ class SEL_Encryption():
                 sel_key = generate_random_key()
                 resp.body = encrypt_object(resp.body, sel_key)
                 resp.headers['X-SEL-Key'] = sel_key.encode('base64')
+
+                # do the materialization
+                if 'X-SEL-Materialize' in req.headers:
+                    data = 'OVERWRITTEN' # debug
+                    destination = resp.environ['PATH_INFO']
+
+                    new_env = req.environ.copy()
+                    new_env['REQUEST_METHOD'] = 'PUT'
+                    new_env['PATH_INFO'] = destination
+                    new_env['wsgi.input'] = StringIO(data) # it has readline
+                    new_env['CONTENT_LENGTH'] = len(data)
+                    new_env['swift.source'] = 'SEL'
+                    new_env['HTTP_USER_AGENT'] = \
+                        '%s SelEncryption' % req.environ.get('HTTP_USER_AGENT')
+
+                    put_obj_req = Request.blank(destination, new_env)
+                    put_obj_resp = put_obj_req.get_response(self.app)
+
+                    # for debug purposes, return the PUT response if not success
+                    if not is_success(put_obj_resp.status_int):
+                        return put_obj_resp
 
         return resp
 
