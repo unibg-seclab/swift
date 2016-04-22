@@ -56,7 +56,7 @@ class SEL_Encryption():
             resp.headers['X-' + META_OE] = resp.headers.get(SYS_OBJ, '')
             if cont_version != obj_version:
                 sel_key = generate_random_key()
-                resp.body = encrypt_object(resp.body, sel_key)
+                resp.app_iter = encrypt_object(resp.app_iter, sel_key)
                 resp.headers['X-SEL-Key'] = sel_key.encode('base64')
 
                 # do the materialization
