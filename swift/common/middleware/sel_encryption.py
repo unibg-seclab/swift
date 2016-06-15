@@ -60,17 +60,17 @@ class SEL_Encryption():
             cont_version = container_info['sysmeta'].get(META_OE, '')
             obj_version = resp.headers.get(SYS_OBJ, '')
 
-            if cont_version == obj_version: # SEL not needed, add oe header
+            if cont_version == obj_version:  # SEL not needed, add oe header
                 resp.headers['X-' + META_OE] = obj_version
 
-            else: # SEL needed
+            else:  # SEL needed
                 new_sel_key = generate_random_key()
 
-                if not self.materialize:  # DOE
+                if not self.materialize:  # DKS
                     resp.app_iter = encrypt_object(resp.app_iter, new_sel_key)
                     resp.headers['X-' + META_KEY] = new_sel_key.encode('base64')
 
-                else: # SOE (do the materialization)
+                else:  # SKS (do the materialization)
 
                     # decrypt the previously encrypted object (if needed)
                     old_sel_key = resp.headers.get(SYS_KEY, '')
@@ -85,7 +85,7 @@ class SEL_Encryption():
                     wsgi_input, length = BytesIO(), 0
                     for chunk in app_iter1:
                         length += wsgi_input.write(chunk)
-                    wsgi_input.seek(0) # seek to the beginning
+                    wsgi_input.seek(0)  # seek to the beginning
 
                     # create the PUT environment
                     path = resp.environ['PATH_INFO']
@@ -100,7 +100,7 @@ class SEL_Encryption():
 
                     # send the PUT request and obtain its response. We also
                     # store the SEL key and update the oe-version
-                    headers = { SYS_OBJ: cont_version, SYS_KEY: new_sel_key }
+                    headers = {SYS_OBJ: cont_version, SYS_KEY: new_sel_key}
                     put_obj_req = Request.blank(path, new_env, headers=headers)
                     put_obj_resp = put_obj_req.get_response(self.app)
 
