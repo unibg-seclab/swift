@@ -1,8 +1,8 @@
 from io import BytesIO
 from itertools import tee
-from swift.common.swob import wsgify
+from swift.common.swob import wsgify, Request
 from swift.common.http import is_success
-from swift.common.overencryption_utils import generate_random_key, encrypt_object, revoking_users
+from swift.common.overencryption_utils import generate_random_key, encrypt_object, decrypt_object, revoking_users
 from swift.proxy.controllers.base import get_container_info
 from swift.common.request_helpers import get_sys_meta_prefix
 
@@ -34,6 +34,7 @@ class SEL_Encryption():
 
         # POST container
         if container and not obj and req.method == 'POST':
+            container_info = get_container_info(req.environ, self.app)
             cont_version = container_info['sysmeta'].get(META_OE, '')
             revoked_users = revoking_users(container_info, req.headers)
             if cont_version.isdigit() and revoked_users:
@@ -67,7 +68,7 @@ class SEL_Encryption():
 
                 if not self.materialize:  # DOE
                     resp.app_iter = encrypt_object(resp.app_iter, new_sel_key)
-                    resp.headers['X-' + META_KEY] = sel_key.encode('base64')
+                    resp.headers['X-' + META_KEY] = new_sel_key.encode('base64')
 
                 else: # SOE (do the materialization)
 

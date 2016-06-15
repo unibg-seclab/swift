@@ -15,17 +15,32 @@ def generate_random_key(key_size=KEY_SIZE):
     """
     Generate a random AES key (the BEL key)
     """
-    return Random.get_random_bytes(key_size)
+    #return Random.get_random_bytes(key_size)
+    random_bytes = Random.get_random_bytes(key_size)
+    return random_bytes
 
 
-def encrypt_object(plaintext, key, encode=False, block_size=BLOCK_SIZE):
+def encrypt_object(plaintext, key, encode=False, block_size=BLOCK_SIZE, **kwargs):
     """
     Encrypt a message using AES CTR
     """
-    cipher = GenAES.new(key, AES.MODE_CTR, counter=Counter.new(block_size * 8))
+    cipher = GenAES.new(key, AES.MODE_CTR, counter=Counter.new(block_size * 8), **kwargs)
     ciphertext = cipher.encrypt(plaintext)
     # Encoding base32 to avoid paths (names containing slashes /)
-    return base64.b32encode(ciphertext) if not encode else ciphertext
+    #return base64.b32encode(ciphertext) if not encode else ciphertext
+    return ciphertext
+
+
+def decrypt_object(ciphertext, key, file_name=False, block_size=BLOCK_SIZE, **kwargs):
+    """
+    Decrypt a message using AES CTR
+    """
+    if file_name:
+        ciphertext = base64.b32decode(ciphertext)
+    cipher = GenAES.new(key, AES.MODE_CTR, counter=Counter.new(block_size * 8), **kwargs)
+    #cipher = AES.new(key, AES.MODE_CTR, counter=Counter.new(block_size * 8))
+    decoded = cipher.decrypt(ciphertext)
+    return decoded
 
 
 def revoking_users(actual_header, new_header):
