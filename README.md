@@ -1,5 +1,6 @@
-# Swift
+# Seclab Swift
 
+## Swift
 A distributed object storage system designed to scale from a single machine
 to thousands of servers. Swift is optimized for multi-tenancy and high
 concurrency. Swift is ideal for backups, web and mobile content, and any other
@@ -14,7 +15,12 @@ to include contributions from many companies and has spawned a thriving
 ecosystem of 3rd party tools. Swift's contributors are listed in the AUTHORS
 file.
 
-## Docs
+## Overencryption
+A new middleware is present in this version of Swift, that provides overencryption.
+The middleware is already active, to disable it just remove `overencryption`
+from the pipeline in `/etc/proxy-server.conf`
+
+### Docs
 
 To build documentation install sphinx (`pip install sphinx`), run
 `python setup.py build_sphinx`, and then browse to /doc/build/html/index.html.
