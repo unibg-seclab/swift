@@ -1,13 +1,12 @@
 # Unibg Seclab
 
 """
-Middleware that will provide Opportunistic OverEncryption support.
+Middleware that will provide on-the-fly OverEncryption support.
 It filters the requests arriving from the users and provides an
 Encryption Layer to protect data from access revocation.
 
 This middleware just builds a proof of concept: the SEL keys are not
-protected (encrypted with the user's public key) and are not stored
-in the catalogs (but stored in the headers of the objects)
+protected (encrypted with the user's public key).
 
 --------------------------
 put_container
@@ -38,18 +37,13 @@ This is the trickiest call. If the object version is equal to the contaner
 version, the object is sent to the user 'as is'.
 In case the version of the object is different from the container version,
 it means that it is not protected against access revocation.
-So, the object is retrieved, if it is already SEL-encrypted (there is already
-a SEL key in its headers) it is decrypted, a new SEL key is generated and
-stored in its headers and it is encrypted with the new key.
-Finally, not only it is sent to the user, but it is also stored (encrypted)
-on disk.
+So, before sending the object to the user, the middleware generates a SEL
+key and encrypts the object. Then it stores the key in the headers of the
+response.
 """
 
-from io import BytesIO
-from itertools import tee
-from swift.common.swob import wsgify, Request
-from swift.common.http import is_success
-from swift.common.overencryption_utils import generate_random_key, encrypt_object, decrypt_object, revoking_users
+from swift.common.swob import wsgify
+from swift.common.overencryption_utils import generate_random_key, encrypt_object, revoking_users
 from swift.proxy.controllers.base import get_container_info
 from swift.common.request_helpers import get_sys_meta_prefix
 
@@ -61,7 +55,7 @@ META_KEY = 'SEL-Key'
 SYS_KEY = get_sys_meta_prefix('object') + META_KEY
 
 
-class OpportunisticSEL():
+class OnTheFlySEL():
 
     def __init__(self, app, conf):
         self.app = app
@@ -110,52 +104,13 @@ class OpportunisticSEL():
                 resp.headers['X-' + META_OE] = obj_version
 
             else:  # SEL needed
-                new_sel_key = generate_random_key()
-
-                # decrypt the previously encrypted object (if needed)
-                old_sel_key = resp.headers.get(SYS_KEY, '')
-                data = (decrypt_object(resp.app_iter, old_sel_key)
-                        if old_sel_key else resp.app_iter)
-
-                # encrypt the data with the new key iteratevely
-                app_iter = encrypt_object(data, new_sel_key)
-                app_iter1, app_iter2 = tee(app_iter)
-
-                # create the input for the PUT request
-                wsgi_input, length = BytesIO(), 0
-                for chunk in app_iter1:
-                    length += wsgi_input.write(chunk)
-                wsgi_input.seek(0)  # seek to the beginning
-
-                # create the PUT environment
-                path = resp.environ['PATH_INFO']
-                new_env = req.environ.copy()
-                new_env['REQUEST_METHOD'] = 'PUT'
-                new_env['PATH_INFO'] = path
-                new_env['wsgi.input'] = wsgi_input
-                new_env['CONTENT_LENGTH'] = length
-                new_env['swift.source'] = 'SEL'
-                new_env['HTTP_USER_AGENT'] = \
-                    '%s SelEncryption' % req.environ.get('HTTP_USER_AGENT')
-
-                # send the PUT request and obtain its response. We also
-                # store the SEL key and update the oe-version
-                headers = {SYS_OBJ: cont_version, SYS_KEY: new_sel_key}
-                put_obj_req = Request.blank(path, new_env, headers=headers)
-                put_obj_resp = put_obj_req.get_response(self.app)
-
-                # for debug purposes, return the PUT response if not success
-                if not is_success(put_obj_resp.status_int):
-                    return put_obj_resp
-
-                # update the response using the new encrypted app_iter
-                resp.app_iter = app_iter2
-                resp.headers['X-' + META_OE] = cont_version
-                resp.headers['X-' + META_KEY] = new_sel_key
+                sel_key = generate_random_key()
+                resp.app_iter = encrypt_object(resp.app_iter, sel_key)
+                resp.headers['X-SEL-Key'] = sel_key
 
         return resp
 
 
 def filter_factory(global_conf, **local_conf):
     conf = dict(global_conf, **local_conf)
-    return lambda app: OpportunisticSEL(app, conf)
+    return lambda app: OnTheFlySEL(app, conf)

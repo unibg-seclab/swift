@@ -80,7 +80,7 @@ bind_port = 8080
 pipeline = catch_errors gatekeeper healthcheck proxy-logging cache container_sync bulk tempurl ratelimit tempauth container-quotas account-quotas slo dlo versioned_writes proxy-logging overencryption proxy-server
 
 [filter:overencryption]
-paste.filter_factory = swift.common.middleware.opportunistic_overencryption:filter_factory
+paste.filter_factory = swift.common.middleware.onthefly_overencryption:filter_factory
 
 [app:proxy-server]
 use = egg:swift#proxy
